@@ -1,6 +1,6 @@
 ﻿namespace OKEGui
 {
-    public delegate void JobProcessingStatusUpdateCallback(StatusUpdate su);
+    public delegate void JobProcessingStatusUpdateCallback(TaskStatus su);
 
     /// <summary>
     /// 任务处理。可执行单元
@@ -11,37 +11,37 @@
         /// sets up encoding
         /// </summary
         /// <param name="job">the job to be processed</param>
-        void setup(Job job, StatusUpdate su);
+        void Setup(Job job, TaskStatus su);
 
         /// <summary>
         /// starts the encoding process
         /// </summary>
-        void start();
+        void Start();
 
         /// <summary>
         /// stops the encoding process
         /// </summary>
-        void stop();
+        void Stop();
 
         /// <summary>
         /// pauses the encoding process
         /// </summary>
-        void pause();
+        void Pause();
 
         /// <summary>
         /// resumes the encoding process
         /// </summary>
-        void resume();
+        void Resume();
 
         /// <summary>
         /// wait until job is finished
         /// </summary>
-        void waitForFinish();
+        void WaitForFinish();
 
         /// <summary>
         /// changes the priority of the encoding process/thread
         /// </summary>
-        void changePriority(ProcessPriority priority);
+        void ChangePriority(ProcessPriority priority);
 
         event JobProcessingStatusUpdateCallback StatusUpdate;
     }

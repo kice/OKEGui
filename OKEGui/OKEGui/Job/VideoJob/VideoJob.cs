@@ -7,14 +7,19 @@
     }
 
     /// <summary>
-    /// Summary description for VideoJob.
+    /// VideoJob 任务参数.
     /// </summary>
     public class VideoJob : Job
     {
         private string codecString;
         public string EncoderPath;
         public string EncodeParam;
+
+        /// <summary>
+        /// 指定输出帧数率
+        /// </summary>
         public double Fps;
+
         public uint FpsNum;
         public uint FpsDen;
 

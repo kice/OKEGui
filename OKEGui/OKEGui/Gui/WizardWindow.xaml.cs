@@ -266,326 +266,6 @@ namespace OKEGui
             }
         }
 
-        #region IniProfile
-
-        public class IniFiles
-        {
-            public string FileName; //INI文件名
-
-            [DllImport("kernel32")]
-            private static extern bool WritePrivateProfileString(string section, string key, string val, string filePath);
-
-            [DllImport("kernel32")]
-            private static extern int GetPrivateProfileString(string section, string key, string def, byte[] retVal, int size, string filePath);
-
-            //类的构造函数，传递INI文件名
-            public IniFiles(string AFileName)
-            {
-                // 判断文件是否存在
-                FileInfo fileInfo = new FileInfo(AFileName);
-                //Todo:搞清枚举的用法
-                if ((!fileInfo.Exists))
-                { //|| (FileAttributes.Directory in fileInfo.Attributes))
-                  //文件不存在，建立文件
-                    System.IO.StreamWriter sw = new System.IO.StreamWriter(AFileName, false, System.Text.Encoding.Default);
-                    try
-                    {
-                        sw.Write("#表格配置档案");
-                        sw.Close();
-                    }
-                    catch
-                    {
-                        throw (new ApplicationException("Ini文件不存在"));
-                    }
-                }
-                //必须是完全路径，不能是相对路径
-                FileName = fileInfo.FullName;
-            }
-
-            //写INI文件
-            public void WriteString(string Section, string Key, string Value)
-            {
-                if (!WritePrivateProfileString(Section, Key, Value, FileName))
-                {
-                    throw (new ApplicationException("写Ini文件出错"));
-                }
-            }
-
-            //读取INI文件指定
-            public string ReadString(string Section, string Key, string Default)
-            {
-                Byte[] Buffer = new Byte[65535];
-                int bufLen = GetPrivateProfileString(Section, Key, Default, Buffer, Buffer.GetUpperBound(0), FileName);
-                //必须设定0（系统默认的代码页）的编码方式，否则无法支持中文
-                string s = Encoding.GetEncoding(0).GetString(Buffer);
-                s = s.Substring(0, bufLen);
-                return s.Trim();
-            }
-
-            //读整数
-            public int ReadInteger(string Section, string Key, int Default)
-            {
-                string intStr = ReadString(Section, Key, Convert.ToString(Default));
-                try
-                {
-                    return Convert.ToInt32(intStr);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    return Default;
-                }
-            }
-
-            //写整数
-            public void WriteInteger(string Section, string Key, int Value)
-            {
-                WriteString(Section, Key, Value.ToString());
-            }
-
-            //读布尔
-            public bool ReadBool(string Section, string Key, bool Default)
-            {
-                try
-                {
-                    return Convert.ToBoolean(ReadString(Section, Key, Convert.ToString(Default)));
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    return Default;
-                }
-            }
-
-            //写Bool
-            public void WriteBool(string Section, string Key, bool Value)
-            {
-                WriteString(Section, Key, Convert.ToString(Value));
-            }
-
-            //从Ini文件中，将指定的Section名称中的所有Key添加到列表中
-            public void ReadSection(string Section, StringCollection Keys)
-            {
-                Byte[] Buffer = new Byte[16384];
-                //Keys.Clear();
-
-                int bufLen = GetPrivateProfileString(Section, null, null, Buffer, Buffer.GetUpperBound(0),
-                  FileName);
-                //对Section进行解析
-                GetStringsFromBuffer(Buffer, bufLen, Keys);
-            }
-
-            private void GetStringsFromBuffer(Byte[] Buffer, int bufLen, StringCollection Strings)
-            {
-                Strings.Clear();
-                if (bufLen != 0)
-                {
-                    int start = 0;
-                    for (int i = 0; i < bufLen; i++)
-                    {
-                        if ((Buffer[i] == 0) && ((i - start) > 0))
-                        {
-                            String s = Encoding.GetEncoding(0).GetString(Buffer, start, i - start);
-                            Strings.Add(s);
-                            start = i + 1;
-                        }
-                    }
-                }
-            }
-
-            //从Ini文件中，读取所有的Sections的名称
-            public void ReadSections(StringCollection SectionList)
-            {
-                //Note:必须得用Bytes来实现，StringBuilder只能取到第一个Section
-                byte[] Buffer = new byte[65535];
-                int bufLen = 0;
-                bufLen = GetPrivateProfileString(null, null, null, Buffer,
-                  Buffer.GetUpperBound(0), FileName);
-                GetStringsFromBuffer(Buffer, bufLen, SectionList);
-            }
-
-            //读取指定的Section的所有Value到列表中
-            public void ReadSectionValues(string Section, NameValueCollection Values)
-            {
-                StringCollection KeyList = new StringCollection();
-                ReadSection(Section, KeyList);
-                Values.Clear();
-                foreach (string key in KeyList)
-                {
-                    Values.Add(key, ReadString(Section, key, ""));
-                }
-            }
-
-            ////读取指定的Section的所有Value到列表中，
-            //public void ReadSectionValues(string Section, NameValueCollection Values,char splitString)
-            //{   string sectionValue;
-            //    string[] sectionValueSplit;
-            //    StringCollection KeyList = new StringCollection();
-            //    ReadSection(Section, KeyList);
-            //    Values.Clear();
-            //    foreach (string key in KeyList)
-            //    {
-            //        sectionValue=ReadString(Section, key, "");
-            //        sectionValueSplit=sectionValue.Split(splitString);
-            //        Values.Add(key, sectionValueSplit[0].ToString(),sectionValueSplit[1].ToString());
-            //    }
-            //}
-
-            //清除某个Section
-            public void EraseSection(string Section)
-            {
-                //
-                if (!WritePrivateProfileString(Section, null, null, FileName))
-                {
-                    throw (new ApplicationException("无法清除Ini文件中的Section"));
-                }
-            }
-
-            //删除某个Section下的键
-            public void DeleteKey(string Section, string Key)
-            {
-                WritePrivateProfileString(Section, Key, null, FileName);
-            }
-
-            //Note:对于Win9X，来说需要实现UpdateFile方法将缓冲中的数据写入文件
-            //在Win NT, 2000和XP上，都是直接写文件，没有缓冲，所以，无须实现UpdateFile
-            //执行完对Ini文件的修改之后，应该调用本方法更新缓冲区。
-            public void UpdateFile()
-            {
-                WritePrivateProfileString(null, null, null, FileName);
-            }
-
-            //检查某个Section下的某个键值是否存在
-            public bool ValueExists(string Section, string Key)
-            {
-                //
-                StringCollection Keys = new StringCollection();
-                ReadSection(Section, Keys);
-                return Keys.IndexOf(Key) > -1;
-            }
-
-            //确保资源的释放
-            ~IniFiles()
-            {
-                UpdateFile();
-            }
-        }
-
-        private bool LoadIniProfile(string profile)
-        {
-            // 配置文件 INI格式
-            // Demo1.okeproj
-
-            //[OKEProject]
-            //ProjectVersion = 1
-            //ProjectName = Demo1
-            //EncoderType = x265
-            //Encoder = x265 - 10b.exe
-            //EnocderParam = "--crf 19"
-            //ContainerFormat = mkv
-            //VideoFormat = hevc
-            //AudioFormat = flac
-            //AudioFormat = aac:128
-            //InputScript = demo1.vpy
-            //ExtractAudioTrack = true(暂时不使用)
-
-            IniFiles okeproj = new IniFiles(wizardInfo.ProjectFile);
-            DirectoryInfo projDir = new DirectoryInfo(wizardInfo.ProjectFile).Parent;
-
-            wizardInfo.ConfigVersion = okeproj.ReadInteger("OKEProject", "ProjectVersion", 0);
-            if (wizardInfo.ConfigVersion < 1)
-            {
-                System.Windows.MessageBox.Show("无效的配置文件。", "新建任务向导", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-
-            wizardInfo.TaskNamePrefix = okeproj.ReadString("OKEProject", "ProjectName", "");
-
-            wizardInfo.EncoderType = okeproj.ReadString("OKEProject", "EncoderType", "").ToLower();
-            if (wizardInfo.EncoderType != "x265")
-            {
-                System.Windows.MessageBox.Show("目前只支持x265编码器。", "新建任务向导", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-
-            // 获取编码器全路径
-            FileInfo encoder = new FileInfo(projDir.FullName + "\\" + okeproj.ReadString("OKEProject", "Encoder", ""));
-            if (encoder.Exists)
-            {
-                wizardInfo.EncoderPath = encoder.FullName;
-                wizardInfo.EncoderInfo = this.GetEncoderInfo(wizardInfo.EncoderPath);
-            }
-
-            wizardInfo.EncoderParam = okeproj.ReadString("OKEProject", "EnocderParam", "");
-
-            Dictionary<string, ComboBoxItem> comboItems = new Dictionary<string, ComboBoxItem>() {
-                { "MKV",    MKVContainer},
-                { "MP4",    MP4Container },
-                { "HEVC",   HEVCVideo},
-                { "AVC",    AVCVideo },
-                { "FLAC",   FLACAudio },
-                { "AAC",    AACAudio},
-            };
-
-            wizardInfo.ContainerFormat = okeproj.ReadString("OKEProject", "ContainerFormat", "").ToLower();
-            if (wizardInfo.ContainerFormat != "mkv" && wizardInfo.ContainerFormat != "mp4" &&
-                wizardInfo.ContainerFormat != "null")
-            {
-                System.Windows.MessageBox.Show("封装格式不正确。只支持mkv，mp4,或者无封装", "新建任务向导", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-            comboItems[wizardInfo.ContainerFormat.ToUpper()].IsSelected = true;
-
-            wizardInfo.VideoFormat = okeproj.ReadString("OKEProject", "VideoFormat", "").ToUpper();
-            if (wizardInfo.VideoFormat != "HEVC")
-            {
-                System.Windows.MessageBox.Show("目前只支持HEVC编码。", "新建任务向导", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-            comboItems[wizardInfo.VideoFormat].IsSelected = true;
-
-            wizardInfo.AudioFormat = okeproj.ReadString("OKEProject", "AudioFormat", "").ToUpper();
-            wizardInfo.AudioBitrate = 128;
-            var audioParam = wizardInfo.AudioFormat.Split(':');
-            if (audioParam.Length == 2)
-            {
-                int bitrate = 0;
-                if (int.TryParse(audioParam[1], out bitrate))
-                {
-                    wizardInfo.AudioBitrate = bitrate == 0 ? 128 : bitrate;
-                }
-            }
-
-            if (wizardInfo.AudioFormat != "FLAC" && wizardInfo.AudioFormat != "AAC" &&
-                wizardInfo.AudioFormat != "ALAC")
-            {
-                System.Windows.MessageBox.Show("音频编码格式不支持。", "新建任务向导", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-            comboItems[wizardInfo.AudioFormat].IsSelected = true;
-
-            var scriptFile = new FileInfo(projDir.FullName + "\\" + okeproj.ReadString("OKEProject", "InputScript", ""));
-
-            if (scriptFile.Exists)
-            {
-                wizardInfo.InputScript = scriptFile.FullName;
-                wizardInfo.VSScript = File.ReadAllText(wizardInfo.InputScript);
-            }
-
-            // 预览
-            wizardInfo.ProjectPreview += "项目名字: " + wizardInfo.TaskNamePrefix;
-            wizardInfo.ProjectPreview += "\n\n编码器类型: " + wizardInfo.EncoderType;
-            wizardInfo.ProjectPreview += "\n编码器路径: \n" + wizardInfo.EncoderPath;
-            wizardInfo.ProjectPreview += "\n编码参数: \n" + wizardInfo.EncoderParam;
-            wizardInfo.ProjectPreview += "\n\n封装格式: " + wizardInfo.ContainerFormat;
-            wizardInfo.ProjectPreview += "\n视频编码: " + wizardInfo.VideoFormat;
-            wizardInfo.ProjectPreview += "\n音频编码: " + wizardInfo.AudioFormat;
-
-            return true;
-        }
-
-        #endregion IniProfile
-
         private NewTask wizardInfo = new NewTask();
         private TaskManager tm;
 
@@ -632,7 +312,7 @@ namespace OKEGui
             }
             catch (Exception e)
             {
-                System.Windows.MessageBox.Show(e.ToString(), "json文件写错了诶", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show(e.ToString(), "项目配置错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
             DirectoryInfo projDir = new DirectoryInfo(wizardInfo.ProjectFile).Parent;
@@ -640,7 +320,7 @@ namespace OKEGui
             // 检查参数
             if (okeProj.Version != 2)
             {
-                System.Windows.MessageBox.Show("这配置文件版本号不匹配当前的OKE", "版本不对", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show("当前版本OKE不支持该版本的配置文件", "配置文件错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
 
@@ -648,7 +328,7 @@ namespace OKEGui
 
             if (okeProj.EncoderType.ToLower() != "x265")
             {
-                System.Windows.MessageBox.Show("啊，目前只能支持x265编码", "版本不对", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show("目前只能支持x265编码", "配置文件错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
             wizardInfo.EncoderType = okeProj.EncoderType.ToLower();
@@ -787,7 +467,7 @@ namespace OKEGui
                 return;
             }
 
-            LoadIniProfile(wizardInfo.ProjectFile);
+            throw new Exception("错误的配置文件");
         }
 
         private void OpenScriptBtn_Click(object sender, RoutedEventArgs e)
@@ -803,7 +483,6 @@ namespace OKEGui
             wizardInfo.InputScript = ofd.FileName;
             wizardInfo.VSScript = File.ReadAllText(wizardInfo.InputScript);
 
-            // 可以下一步
             SelectVSScript.CanSelectNextPage = true;
         }
 
@@ -1056,51 +735,61 @@ namespace OKEGui
             // 2、新建任务参数
             foreach (var inputFile in wizardInfo.InputFile)
             {
+                MediaFile mf = new MediaFile();
+
                 // 新建文件（inputname.m2ts-mm-dd-HH-MM.vpy）
-                string vpy = inputTemplate[0] + inputTemplate[1] + "r'" +
-                    inputFile + "'" + inputTemplate[3];
+                string vpy = inputTemplate[0] + inputTemplate[1] + "r'" + inputFile + "'" + inputTemplate[3];
 
                 DateTime time = DateTime.Now;
 
                 string fileName = inputFile + "-" + time.ToString("MMddHHmm") + ".vpy";
-                System.IO.File.WriteAllText(fileName, vpy);
+                File.WriteAllText(fileName, vpy);
 
-                var finfo = new System.IO.FileInfo(inputFile);
-                TaskDetail td = new TaskDetail();
-                td.TaskName = finfo.Name;
+                var finfo = new FileInfo(inputFile);
+                TaskDetails task = new TaskDetails(finfo.Name);
                 if (wizardInfo.TaskNamePrefix != "")
                 {
-                    td.TaskName = wizardInfo.TaskNamePrefix + "-" + td.TaskName;
+                    task.TaskName = wizardInfo.TaskNamePrefix + "-" + task.TaskName;
                 }
 
-                td.InputScript = fileName;
+                task.ContainerFormat = wizardInfo.ContainerFormat;
 
-                td.EncoderPath = wizardInfo.EncoderPath;
-                td.EncoderParam = wizardInfo.EncoderParam;
-                td.InputFile = inputFile;
+                task.MediaInFile = new MediaFile(inputFile);
 
-                td.ContainerFormat = wizardInfo.ContainerFormat;
-                td.Fps = wizardInfo.Fps;
-                td.VideoFormat = wizardInfo.VideoFormat;
-                td.AudioFormat = wizardInfo.AudioFormat;
+                // 新建视频处理工作
+                if (wizardInfo.VideoFormat == "HEVC")
+                {
+                    VideoJob videoJob = new VideoJob(wizardInfo.VideoFormat);
 
-                td.IncludeSub = wizardInfo.IncludeSub;
+                    videoJob.Input = new VSMediaFile(fileName);
+                    videoJob.Output = task.MediaOutFile;
+                    videoJob.EncoderPath = wizardInfo.EncoderPath;
+                    videoJob.EncodeParam = wizardInfo.EncoderParam;
+                    videoJob.Fps = wizardInfo.Fps;
+
+                    task.JobQueue.Enqueue(videoJob);
+                }
+
+                task.VideoSettings = new VideoCodecSettings();
+                task.AudioSettings = new AudioCodecSettings();
+
+                task.IncludeSub = wizardInfo.IncludeSub;
 
                 foreach (var audio in wizardInfo.AudioTracks)
                 {
-                    td.AudioTracks.Add(audio);
+                    task.AudioTracks.Add(audio);
                 }
 
                 // 更新输出文件拓展名
-                if (!td.UpdateOutputFileName())
+                if (!task.UpdateOutputFileName())
                 {
                     System.Windows.MessageBox.Show("格式错误！", "新建任务向导", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
-                td.IsExtAudioOnly = false;
+                task.IsExtAudioOnly = false;
 
-                tm.AddTask(td);
+                tm.AddTask(task);
             }
         }
 

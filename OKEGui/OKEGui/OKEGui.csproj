@@ -84,6 +84,11 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Job\CodecSettings\AudioCodecSettings.cs" />
+    <Compile Include="Job\CodecSettings\VideoCodecSettings.cs" />
+    <Compile Include="Job\Interface\VSMediaFile.cs" />
+    <Compile Include="TaskDetails.cs" />
+    <Compile Include="TaskStatus.cs" />
     <Compile Include="TaskManager.cs" />
     <Compile Include="JobProcessor\Audio\FLACDecoder.cs" />
     <Compile Include="JobProcessor\Audio\QAACEncoder.cs" />
@@ -114,9 +119,7 @@
     <Compile Include="JobProcessor\IJobProcessor.cs" />
     <Compile Include="JobProcessor\Video\x265Encoder.cs" />
     <Compile Include="Job\Job.cs" />
-    <Compile Include="Job\StatusUpdate.cs" />
     <Compile Include="Job\VideoJob\VideoJob.cs" />
-    <Compile Include="TaskDetail.cs" />
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>

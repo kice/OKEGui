@@ -10,7 +10,9 @@ namespace OKEGui
     {
         #region variables
 
+        protected new VideoJob job;
         private ulong numberOfFrames;
+
         private ulong currentFrameNumber;
         private ulong lastFrameNumber;
         private uint lastUpdateTime;
@@ -20,8 +22,6 @@ namespace OKEGui
         protected double speed;
         protected double bitrate;
         protected string unit;
-
-        protected VideoJob job;
 
         #endregion variables
 
@@ -56,18 +56,22 @@ namespace OKEGui
         /// <returns>true if the file could be opened, false if not</returns>
         protected void getInputProperties(VideoJob job)
         {
-            //VapourSynthHelper vsHelper = new VapourSynthHelper();
-            //vsHelper.LoadScriptFile(job.Input);
-            VSPipeInfo vsHelper = new VSPipeInfo(job.Input);
-            fps_n = vsHelper.FpsNum;
-            fps_d = vsHelper.FpsDen;
-            numberOfFrames = (ulong)vsHelper.TotalFreams;
+            if (job.Input.Type == MediaFileType.VSScritpFile)
+            {
+                VSPipeInfo vsHelper = new VSPipeInfo(job.Input.Path);
+                fps_n = vsHelper.FpsNum;
+                fps_d = vsHelper.FpsDen;
+                numberOfFrames = (ulong)vsHelper.TotalFreams;
+            }
+            else if (job.Input.Type == MediaFileType.NormalFile)
+            {
+                // TODO: 使用FFMPEG读取源信息
+            }
+
             if (fps_n != job.FpsNum || fps_d != job.FpsDen)
             {
                 throw new Exception("输出FPS和指定FPS不一致");
             }
-
-            // su.ClipLength = TimeSpan.FromSeconds((double)numberOfFrames / fps);
         }
 
         /// <summary>
@@ -77,17 +81,16 @@ namespace OKEGui
         {
             try
             {
-                if (!string.IsNullOrEmpty(job.Output) && File.Exists(job.Output))
+                if (!string.IsNullOrEmpty(job.Output.Path) && File.Exists(job.Output.Path))
                 {
-                    FileInfo fi = new FileInfo(job.Output);
+                    FileInfo fi = new FileInfo(job.Output.Path);
                     long size = fi.Length; // size in bytes
 
                     ulong framecount = 0;
-                    double framerate = 23.976;
-                    // JobUtil.getInputProperties(out framecount, out framerate, job.Input);
+                    double framerate = fps_n / fps_d;
 
                     double numberOfSeconds = (double)framecount / framerate;
-                    long bitrate = (long)((double)(size * 8.0) / (numberOfSeconds * 1000.0));
+                    bitrate = (long)(size * 8.0 / (numberOfSeconds * 1000.0));
                 }
             }
             catch (Exception e)
@@ -98,8 +101,15 @@ namespace OKEGui
 
         #endregion helper methods
 
-        public override void setup(Job job, StatusUpdate su)
+        public override void Setup(Job job, TaskStatus su)
         {
+            if (!(job is VideoJob))
+            {
+                throw new Exception("错误的任务类型");
+            }
+
+            this.job = job as VideoJob;
+            this.su = su;
         }
 
         protected bool setFrameNumber(string frameString, bool isUpdateSpeed = false)
@@ -181,23 +191,23 @@ namespace OKEGui
         {
             if (speed == 0)
             {
-                job.TimeRemain = TimeSpan.FromDays(30);
+                su.TimeRemain = TimeSpan.FromDays(30);
             }
             else
             {
-                job.TimeRemain = TimeSpan.FromSeconds((double)(numberOfFrames - currentFrameNumber) / speed);
+                su.TimeRemain = TimeSpan.FromSeconds((double)(numberOfFrames - currentFrameNumber) / speed);
             }
 
-            job.Speed = speed.ToString("0.00") + " fps";
-            job.Progress = (double)currentFrameNumber / (double)numberOfFrames * 100;
+            su.Speed = speed.ToString("0.00") + " fps";
+            su.Progress = (double)currentFrameNumber / (double)numberOfFrames * 100;
 
             if (bitrate == 0)
             {
-                job.BitRate = "未知";
+                su.BitRate = "未知";
             }
             else
             {
-                job.BitRate = bitrate.ToString("0.00") + unit;
+                su.BitRate = bitrate.ToString("0.00") + unit;
             }
 
             // su.NbFramesDone = currentFrameNumber;
@@ -219,14 +229,15 @@ namespace OKEGui
 
         protected void encodeFinish()
         {
-            job.TimeRemain = TimeSpan.Zero;
-            job.Progress = 100;
-            job.Status = "压制完成";
+            su.TimeRemain = TimeSpan.Zero;
+            su.Progress = 100;
+            su.Status = "压制完成";
 
-            // TODO: 计算最终码率
+            // compileFinalStats();
+
             // 这里显示文件最终大小
-            FileInfo vinfo = new FileInfo(job.Output);
-            job.BitRate = HumanReadableFilesize(vinfo.Length, 2);
+            FileInfo vinfo = new FileInfo(su.OutputFile);
+            su.BitRate = HumanReadableFilesize(vinfo.Length, 2);
 
             base.SetFinish();
         }

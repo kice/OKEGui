@@ -11,8 +11,10 @@ namespace OKEGui
         public static IJobProcessor NewQAACEncoder(string QAACPath, Job j)
         {
             var qaac = new FileInfo(QAACPath);
-            if (qaac.Exists) {
-                if (j is AudioJob) {
+            if (qaac.Exists)
+            {
+                if (j is AudioJob)
+                {
                     return new QAACEncoder(qaac.FullName, j as AudioJob);
                 }
             }
@@ -26,23 +28,26 @@ namespace OKEGui
         // TODO: 变更编码参数
         public QAACEncoder(string QAACPath, AudioJob j, int bitrate = Constants.QAACBitrate) : base()
         {
-            if (j.Input != "-") { //not from stdin, but an actual file
-                j.Input = $"\"{j.Input}\"";
+            if (j.Input.Path != "-")
+            {
+                //not from stdin, but an actual file
+                j.Input.Path = $"\"{j.Input.Path}\"";
             }
 
             executable = QAACPath;
-            commandLine = $"-i -v {bitrate} -q 2 --no-delay -o \"{j.Output}\" {j.Input}";
+            commandLine = $"-i -v {bitrate} -q 2 --no-delay -o \"{j.Output.Path}\" {j.Input.Path}";
         }
 
         public override void ProcessLine(string line, StreamType stream)
         {
             Debugger.Log(0, "QAACEncoder", line);
-            if (line.Contains(".done")) {
+            if (line.Contains(".done"))
+            {
                 SetFinish();
             }
         }
 
-        public override void setup(Job job, StatusUpdate su)
+        public override void Setup(Job job, TaskStatus su)
         {
         }
 

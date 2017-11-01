@@ -12,7 +12,8 @@ namespace OKEGui
     {
         public static IJobProcessor NewVSPipeProcessor(Job j)
         {
-            if (j is VideoInfoJob) {
+            if (j is VideoInfoJob)
+            {
                 return new VSPipeProcessor(j as VideoInfoJob);
             }
             return null;
@@ -28,13 +29,15 @@ namespace OKEGui
             RegistryKey key = Registry.LocalMachine;
             RegistryKey vskey = key.OpenSubKey("software\\vapoursynth");
             string vscore = vskey.GetValue("Path") as string;
-            if (vscore == null) {
+            if (vscore == null)
+            {
                 throw new Exception("can't get vs install path");
             }
 
             FileInfo vspipeInfo = new FileInfo(new DirectoryInfo(vscore).FullName + "\\core64\\vspipe.exe");
 
-            if (vspipeInfo.Exists) {
+            if (vspipeInfo.Exists)
+            {
                 this.executable = vspipeInfo.FullName;
             }
 
@@ -59,75 +62,99 @@ namespace OKEGui
             Regex rColorFamily = new Regex("Color Family: ([a-zA-Z]+)");
             Regex rBits = new Regex("Bits: ([0-9]+)");
 
-            if (line.Contains("Width")) {
+            if (line.Contains("Width"))
+            {
                 var s = rWidth.Split(line);
                 int w;
                 int.TryParse(s[1], out w);
-                if (w > 0) {
+                if (w > 0)
+                {
                     videoInfo.width = w;
                 }
-            } else if (line.Contains("Height")) {
+            }
+            else if (line.Contains("Height"))
+            {
                 var s = rHeight.Split(line);
                 int h;
                 int.TryParse(s[1], out h);
-                if (h > 0) {
+                if (h > 0)
+                {
                     videoInfo.height = h;
                 }
-            } else if (line.Contains("Frames")) {
+            }
+            else if (line.Contains("Frames"))
+            {
                 var s = rFrames.Split(line);
                 int f;
                 int.TryParse(s[1], out f);
-                if (f > 0) {
+                if (f > 0)
+                {
                     videoInfo.numFrames = f;
                 }
-            } else if (line.Contains("FPS")) {
+            }
+            else if (line.Contains("FPS"))
+            {
                 var s = rFPS.Split(line);
 
                 int n;
                 int.TryParse(s[1], out n);
-                if (n > 0) {
+                if (n > 0)
+                {
                     videoInfo.fpsNum = n;
                 }
 
                 int.TryParse(s[2], out n);
-                if (n > 0) {
+                if (n > 0)
+                {
                     videoInfo.fpsDen = n;
                 }
 
                 double f;
                 double.TryParse(s[3], out f);
-                if (f > 0) {
+                if (f > 0)
+                {
                     videoInfo.fps = f;
                 }
-            } else if (line.Contains("Format Name:")) {
+            }
+            else if (line.Contains("Format Name:"))
+            {
                 var s = rFormatName.Split(line);
                 videoInfo.format.name = s[1];
-            } else if (line.Contains("Color Family")) {
+            }
+            else if (line.Contains("Color Family"))
+            {
                 var s = rColorFamily.Split(line);
                 videoInfo.format.colorFamilyName = s[1];
-            } else if (line.Contains("Bits")) {
+            }
+            else if (line.Contains("Bits"))
+            {
                 var s = rBits.Split(line);
                 int w;
                 int.TryParse(s[1], out w);
-                if (w > 0) {
+                if (w > 0)
+                {
                     videoInfo.format.bitsPerSample = w;
                 }
 
                 // 假设到这里已经获取完毕了
                 retrieved.Set();
-            } else if (line.Contains("SubSampling")) {
+            }
+            else if (line.Contains("SubSampling"))
+            {
                 //目前还没有要处理subsampling的
-            } else {
+            }
+            else
+            {
                 // 未知line
             }
         }
 
-        public override void waitForFinish()
+        public override void WaitForFinish()
         {
             retrieved.WaitOne();
         }
 
-        public override void setup(Job job, StatusUpdate su)
+        public override void Setup(Job job, TaskStatus su)
         {
         }
 

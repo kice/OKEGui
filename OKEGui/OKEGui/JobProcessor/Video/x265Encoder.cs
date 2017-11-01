@@ -17,7 +17,8 @@ namespace OKEGui
 
         public static IJobProcessor init(Job j, string extractParam)
         {
-            if (j is VideoJob && ((j as VideoJob).CodecString == "X265" || (j as VideoJob).CodecString == "HEVC")) {
+            if (j is VideoJob && ((j as VideoJob).CodecString == "X265" || (j as VideoJob).CodecString == "HEVC"))
+            {
                 return new x265Encoder((j as VideoJob), extractParam);
             }
             return null;
@@ -31,7 +32,8 @@ namespace OKEGui
 
             executable = Path.Combine(Environment.SystemDirectory, "cmd.exe");
 
-            if (File.Exists(job.EncoderPath)) {
+            if (File.Exists(job.EncoderPath))
+            {
                 this.x265Path = job.EncoderPath;
             }
 
@@ -41,13 +43,15 @@ namespace OKEGui
             RegistryKey key = Registry.LocalMachine;
             RegistryKey vskey = key.OpenSubKey("software\\vapoursynth");
             string vscore = vskey.GetValue("Path") as string;
-            if (vscore == null) {
+            if (vscore == null)
+            {
                 throw new Exception("can't get vs install path");
             }
 
             FileInfo vspipeInfo = new FileInfo(new DirectoryInfo(vscore).FullName + "\\core64\\vspipe.exe");
 
-            if (vspipeInfo.Exists) {
+            if (vspipeInfo.Exists)
+            {
                 this.vspipePath = vspipeInfo.FullName;
             }
 
@@ -65,11 +69,13 @@ namespace OKEGui
             //            return;
             //}
 
-            if (line.ToLowerInvariant().Contains("encoded")) {
+            if (line.ToLowerInvariant().Contains("encoded"))
+            {
                 Regex rf = new Regex("encoded ([0-9]+) frames in ([0-9]+.[0-9]+)s \\(([0-9]+.[0-9]+) fps\\), ([0-9]+.[0-9]+) kb/s, Avg QP:(([0-9]+.[0-9]+))");
                 var result = rf.Split(line);
                 // 这里是平均速度
-                if (!base.setSpeed(result[3])) {
+                if (!base.setSpeed(result[3]))
+                {
                     return;
                 }
 
@@ -81,11 +87,13 @@ namespace OKEGui
             Regex r = new Regex("([0-9]+) frames: ([0-9]+.[0-9]+) fps, ([0-9]+.[0-9]+) kb/s", RegexOptions.IgnoreCase);
 
             var status = r.Split(line);
-            if (status.Length < 3) {
+            if (status.Length < 3)
+            {
                 return;
             }
 
-            if (!base.setFrameNumber(status[1], true)) {
+            if (!base.setFrameNumber(status[1], true))
+            {
                 return;
             }
 
@@ -99,8 +107,7 @@ namespace OKEGui
             base.ProcessLine(line, stream);
         }
 
-        // TODO: 改为静态
-        public /*static*/ string BuildCommandline(string extractParam)
+        public string BuildCommandline(string extractParam)
         {
             StringBuilder sb = new StringBuilder();
 

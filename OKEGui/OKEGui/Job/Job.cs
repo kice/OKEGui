@@ -16,60 +16,16 @@ namespace OKEGui
     {
         #region important details
 
-        public string Input;
-        public string Output;
+        public MediaFile Input;
+        public MediaFile Output;
+
         public List<string> FilesToDelete;
 
         #region JobStatus
 
-        public string Status
-        {
-            set {
-                if (ts != null) {
-                    ts.CurrentStatus = value;
-                }
-            }
-        }
+        private JobStatus ts;
 
-        public double Progress
-        {
-            set {
-                if (ts != null) {
-                    ts.ProgressValue = value;
-                }
-            }
-        }
-
-        public string Speed
-        {
-            set {
-                if (ts != null) {
-                    ts.Speed = value;
-                }
-            }
-        }
-
-        public TimeSpan TimeRemain
-        {
-            set {
-                if (ts != null) {
-                    ts.TimeRemain = value;
-                }
-            }
-        }
-
-        public string BitRate
-        {
-            set {
-                if (ts != null) {
-                    ts.BitRate = value;
-                }
-            }
-        }
-
-        private TaskStatus ts;
-
-        public void SetUpdate(TaskStatus taskStatus)
+        public void SetUpdate(JobStatus taskStatus)
         {
             ts = taskStatus;
         }
@@ -84,14 +40,20 @@ namespace OKEGui
         {
         }
 
-        public Job(string input, string output)
+        public Job(MediaFile input, MediaFile output)
         {
+            FilesToDelete = new List<string>();
+
             Input = input;
             Output = output;
-            if (!string.IsNullOrEmpty(input) && input == output)
-                throw new Exception("Input and output files may not be the same");
+            if (input == null || output == null)
+            {
+                Input = new MediaFile();
+                Output = new MediaFile();
+            }
 
-            FilesToDelete = new List<string>();
+            if (!string.IsNullOrEmpty(input.Path) && input.Path == output.Path)
+                throw new Exception("Input and output files may not be the same");
         }
 
         #endregion init

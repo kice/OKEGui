@@ -8,13 +8,11 @@ namespace OKEGui
 {
     public enum StreamType : ushort { None = 0, Stderr = 1, Stdout = 2 }
 
-    public abstract class CommandlineJobProcessor/*<TJob>*/ : IJobProcessor
-    //where TJob : Job
+    public abstract class CommandlineJobProcessor : IJobProcessor
     {
         #region variables
 
-        // protected Job job;
-
+        protected Job job;
         protected DateTime startTime;
         protected bool isProcessing = false;
         protected Process proc = new Process(); // the encoder process
@@ -23,7 +21,7 @@ namespace OKEGui
         protected ManualResetEvent finishMre = new ManualResetEvent(false);
         protected ManualResetEvent stdoutDone = new ManualResetEvent(false);
         protected ManualResetEvent stderrDone = new ManualResetEvent(false);
-        protected StatusUpdate su;
+        protected TaskStatus su;
         protected Thread readFromStdErrThread;
         protected Thread readFromStdOutThread;
         protected List<string> tempFiles = new List<string>();
@@ -40,8 +38,10 @@ namespace OKEGui
 
         protected void writeTempTextFile(string filePath, string text)
         {
-            using (Stream temp = new FileStream(filePath, System.IO.FileMode.Create)) {
-                using (TextWriter avswr = new StreamWriter(temp, System.Text.Encoding.Default)) {
+            using (Stream temp = new FileStream(filePath, System.IO.FileMode.Create))
+            {
+                using (TextWriter avswr = new StreamWriter(temp, System.Text.Encoding.Default))
+                {
                     avswr.WriteLine(text);
                 }
             }
@@ -56,9 +56,12 @@ namespace OKEGui
 
         private static void safeDelete(string filePath)
         {
-            try {
+            try
+            {
                 File.Delete(filePath);
-            } catch {
+            }
+            catch
+            {
                 // Do Nothing
             }
         }
@@ -93,21 +96,28 @@ namespace OKEGui
             stderrDone.WaitOne(); // wait for stderr to finish processing
 
             // check the exitcode
-            if (checkExitCode && proc.ExitCode != 0) {
+            if (checkExitCode && proc.ExitCode != 0)
+            {
                 getErrorLine();
                 string strError = WindowUtil.GetErrorText(proc.ExitCode);
-                if (!su.WasAborted) {
+                if (!su.WasAborted)
+                {
                     su.HasError = true;
                     // log.LogEvent("Process exits with error: " + strError, ImageType.Error);
-                } else {
+                }
+                else
+                {
                     // log.LogEvent("Process exits with error: " + strError);
                 }
             }
 
-            if (bRunSecondTime) {
+            if (bRunSecondTime)
+            {
                 bRunSecondTime = false;
-                start();
-            } else {
+                Start();
+            }
+            else
+            {
                 su.IsComplete = true;
                 StatusUpdate(su);
             }
@@ -117,10 +127,9 @@ namespace OKEGui
 
         #region IVideoEncoder overridden Members
 
-        public abstract void setup(Job job, StatusUpdate su);
+        public abstract void Setup(Job job, TaskStatus su);
 
-        // TODO: 默认优先级
-        public void start()
+        public void Start()
         {
             proc = new Process();
             ProcessStartInfo pstart = new ProcessStartInfo();
@@ -137,7 +146,8 @@ namespace OKEGui
             bWaitForExit = false;
             // log.LogValue("Job command line", '"' + pstart.FileName + "\" " + pstart.Arguments);
 
-            try {
+            try
+            {
                 bool started = proc.Start();
                 // startTime = DateTime.Now;
                 isProcessing = true;
@@ -151,15 +161,19 @@ namespace OKEGui
                 // new System.Windows.Forms.MethodInvoker(this.RunStatusCycle).BeginInvoke(null, null);
                 // this.changePriority(MainForm.Instance.Settings.ProcessingPriority);
                 // this.changePriority(ProcessPriority.NORMAL);
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 throw e;
             }
         }
 
-        public void stop()
+        public void Stop()
         {
-            if (proc != null && !proc.HasExited) {
-                try {
+            if (proc != null && !proc.HasExited)
+            {
+                try
+                {
                     bWaitForExit = true;
                     mre.Set(); // if it's paused, then unpause
                     su.WasAborted = true;
@@ -171,10 +185,14 @@ namespace OKEGui
                     }
                     proc.WaitForExit();
                     return;
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     throw e;
                 }
-            } else {
+            }
+            else
+            {
                 if (proc == null)
                     throw new Exception("Encoder process does not exist");
                 else
@@ -182,7 +200,7 @@ namespace OKEGui
             }
         }
 
-        public void pause()
+        public void Pause()
         {
             if (!canPause)
                 throw new Exception("Can't pause this kind of job.");
@@ -190,7 +208,7 @@ namespace OKEGui
                 throw new Exception("Could not reset mutex. pause failed");
         }
 
-        public void resume()
+        public void Resume()
         {
             if (!canPause)
                 throw new Exception("Can't resume this kind of job.");
@@ -198,7 +216,7 @@ namespace OKEGui
                 throw new Exception("Could not set mutex. pause failed");
         }
 
-        public virtual void waitForFinish()
+        public virtual void WaitForFinish()
         {
             finishMre.WaitOne();
         }
@@ -208,16 +226,19 @@ namespace OKEGui
             finishMre.Set();
         }
 
-        public bool isRunning()
+        public bool IsRunning()
         {
             return (proc != null && !proc.HasExited);
         }
 
-        public void changePriority(ProcessPriority priority)
+        public void ChangePriority(ProcessPriority priority)
         {
-            if (isRunning()) {
-                try {
-                    switch (priority) {
+            if (IsRunning())
+            {
+                try
+                {
+                    switch (priority)
+                    {
                         case ProcessPriority.IDLE:
                             proc.PriorityClass = ProcessPriorityClass.Idle;
                             break;
@@ -240,14 +261,18 @@ namespace OKEGui
                     }
                     VistaStuff.SetProcessPriority(proc.Handle, proc.PriorityClass);
                     return;
-                } catch (Exception e) // process could not be running anymore
-                  {
+                }
+                catch (Exception e) // process could not be running anymore
+                {
                     throw e;
                 }
-            } else {
+            }
+            else
+            {
                 if (proc == null)
                     throw new Exception("Process has not been started yet");
-                else {
+                else
+                {
                     Debug.Assert(proc.HasExited);
                     throw new Exception("Process has exited");
                 }
@@ -271,15 +296,20 @@ namespace OKEGui
         protected virtual void readStream(StreamReader sr, ManualResetEvent rEvent, StreamType str)
         {
             string line;
-            if (proc != null) {
-                try {
-                    while ((line = sr.ReadLine()) != null) {
+            if (proc != null)
+            {
+                try
+                {
+                    while ((line = sr.ReadLine()) != null)
+                    {
                         mre.WaitOne();
 
                         Debugger.Log(0, "readStream", line + "\n");
                         ProcessLine(line, str);
                     }
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     ProcessLine("Exception in readStream. Line cannot be processed. " + e.Message, str);
                     throw e;
                 }
@@ -290,9 +320,12 @@ namespace OKEGui
         protected void readStdOut()
         {
             StreamReader sr = null;
-            try {
+            try
+            {
                 sr = proc.StandardOutput;
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 // log.LogValue("Exception getting IO reader for stdout", e, ImageType.Error);
                 stdoutDone.Set();
                 return;
@@ -303,9 +336,12 @@ namespace OKEGui
         protected void readStdErr()
         {
             StreamReader sr = null;
-            try {
+            try
+            {
                 sr = proc.StandardError;
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 // log.LogValue("Exception getting IO reader for stderr", e, ImageType.Error);
                 stderrDone.Set();
                 return;
@@ -335,12 +371,12 @@ namespace OKEGui
 
         protected void RunStatusCycle()
         {
-            while (isRunning()) {
+            while (IsRunning())
+            {
                 su.TimeElapsed = DateTime.Now - startTime;
-                // su.CurrentFileSize = (ulong)new FileInfo(job.Output).Length;
 
                 doStatusCycleOverrides();
-                su.FillValues();
+
                 if (StatusUpdate != null && proc != null && !proc.HasExited)
                     StatusUpdate(su);
 

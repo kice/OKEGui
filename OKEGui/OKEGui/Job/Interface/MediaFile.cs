@@ -6,6 +6,12 @@ using System.Threading.Tasks;
 
 namespace OKEGui
 {
+    public enum MediaFileType
+    {
+        NormalFile,
+        VSScritpFile,
+    }
+
     public enum TrackType
     {
         Audio,
@@ -42,7 +48,7 @@ namespace OKEGui
         /// <summary>
         /// 当前轨道所在文件。如果在已封装文件里，可以转换为IMediaContainer接口。
         /// </summary>
-        public IFile file;
+        public IFile File;
 
         /// <summary>
         /// 新建一条轨道
@@ -53,7 +59,7 @@ namespace OKEGui
         {
             MediaTrack mt = new MediaTrack();
             mt.TrackType = TrackType.Unknown;
-            mt.file = file;
+            mt.File = file;
 
             return mt;
         }
@@ -69,11 +75,11 @@ namespace OKEGui
             StreamInfo = new VideoInfo();
         }
 
-        public static new MediaTrack NewTrack(IFile file, double fps)
+        public new static MediaTrack NewTrack(IFile file, double fps)
         {
             VideoTrack mt = new VideoTrack();
             mt.StreamInfo = new VideoInfo(fps);
-            mt.file = file;
+            mt.File = file;
 
             return mt;
         }
@@ -88,10 +94,10 @@ namespace OKEGui
             TrackType = TrackType.Audio;
         }
 
-        public static new MediaTrack NewTrack(IFile file)
+        public new static MediaTrack NewTrack(IFile file)
         {
             AudioTrack mt = new AudioTrack();
-            mt.file = file;
+            mt.File = file;
 
             return mt;
         }
@@ -104,10 +110,10 @@ namespace OKEGui
             TrackType = TrackType.Subtitle;
         }
 
-        public static new MediaTrack NewTrack(IFile file)
+        public new static MediaTrack NewTrack(IFile file)
         {
             SubtitleTrack mt = new SubtitleTrack();
-            mt.file = file;
+            mt.File = file;
 
             return mt;
         }
@@ -120,10 +126,10 @@ namespace OKEGui
             TrackType = TrackType.Chapter;
         }
 
-        public static new MediaTrack NewTrack(IFile file)
+        public new static MediaTrack NewTrack(IFile file)
         {
             ChapterTrack mt = new ChapterTrack();
-            mt.file = file;
+            mt.File = file;
 
             return mt;
         }
@@ -235,11 +241,28 @@ namespace OKEGui
             }
         }
 
+        /// <summary>
+        /// 源媒体文件路径
+        /// </summary>
+        public string Path { get; set; }
+
+        public MediaFileType Type { get; set; }
+
         public VideoTrack VideoTrack = null;
         public List<AudioTrack> AudioTracks = new List<AudioTrack>();
         public List<SubtitleTrack> SubtitleTracks = new List<SubtitleTrack>();
 
         public ChapterTrack Chapter = null;
+
+        public MediaFile()
+        {
+            Type = MediaFileType.NormalFile;
+        }
+
+        public MediaFile(string path) : base()
+        {
+            this.Path = path;
+        }
 
         /// <summary>
         /// 插入多媒体轨道
@@ -336,6 +359,11 @@ namespace OKEGui
             }
 
             return null;
+        }
+
+        public override string ToString()
+        {
+            return Path;
         }
     }
 }

@@ -33,7 +33,7 @@ namespace OKEGui
         private void _btnTest_Click(object sender, RoutedEventArgs e)
         {
             // ClickEvent();
-            tm.AddTask();
+            // tm.AddTask();
         }
 
         private void start()
@@ -54,7 +54,8 @@ namespace OKEGui
         private void listView1_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             object o = listView1.SelectedItem;
-            if (o == null) {
+            if (o == null)
+            {
                 return;
             }
 
@@ -62,7 +63,8 @@ namespace OKEGui
             SubWindow subWin = new SubWindow(item);
             subWin.ShowDialog();
 
-            if (!tm.UpdateTask(subWin.GetNewTaskDetail())) {
+            if (!tm.UpdateTask(subWin.GetNewTaskDetail()))
+            {
                 System.Windows.MessageBox.Show("任务更新失败！", "任务详细", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
@@ -71,9 +73,12 @@ namespace OKEGui
 
         private void listView1_PreviewDragOver(object sender, DragEventArgs e)
         {
-            if (IsSingleFile(e) != null) {
+            if (IsSingleFile(e) != null)
+            {
                 e.Effects = DragDropEffects.Copy;
-            } else {
+            }
+            else
+            {
                 e.Handled = true;
             }
         }
@@ -83,7 +88,8 @@ namespace OKEGui
             e.Handled = true;
 
             string fileName = IsSingleFile(e);
-            if (fileName == null) {
+            if (fileName == null)
+            {
                 return;
             }
             // TODO
@@ -92,12 +98,15 @@ namespace OKEGui
         private string IsSingleFile(DragEventArgs args)
         {
             // Check for files in the hovering data object.
-            if (args.Data.GetDataPresent(DataFormats.FileDrop, true)) {
+            if (args.Data.GetDataPresent(DataFormats.FileDrop, true))
+            {
                 string[] fileNames = args.Data.GetData(DataFormats.FileDrop, true) as string[];
                 // Check fo a single file or folder.
-                if (fileNames.Length == 1) {
+                if (fileNames.Length == 1)
+                {
                     // Check for a file (a directory will return false).
-                    if (File.Exists(fileNames[0])) {
+                    if (File.Exists(fileNames[0]))
+                    {
                         // At this point we know there is a single file.
                         return fileNames[0];
                     }
@@ -120,11 +129,13 @@ namespace OKEGui
 
         private void BtnRun_Click(object sender, RoutedEventArgs e)
         {
-            if (tm.isCanStart) {
+            if (tm.isCanStart)
+            {
                 return;
             }
 
-            if (wm.GetWorkerCount() == 0) {
+            if (wm.GetWorkerCount() == 0)
+            {
                 WorkerCount++;
                 wm.AddWorker("工作单元-" + WorkerCount.ToString());
                 this.WorkerNumber.Text = "工作单元：" + WorkerCount.ToString();
@@ -132,7 +143,8 @@ namespace OKEGui
 
             tm.isCanStart = true;
 
-            if (!wm.Start()) {
+            if (!wm.Start())
+            {
                 tm.isCanStart = false;
                 MessageBox.Show("无法开始任务！", "OKEGui", MessageBoxButton.OK, MessageBoxImage.Error);
 
@@ -152,13 +164,15 @@ namespace OKEGui
         private void BtnEdit_Click(object sender, RoutedEventArgs e)
         {
             object o = listView1.SelectedItem;
-            if (o == null) {
+            if (o == null)
+            {
                 return;
             }
 
             TaskDetail item = o as TaskDetail;
 
-            if (item.IsRunning) {
+            if (item.IsRunning)
+            {
                 System.Windows.MessageBox.Show("无法编辑该任务！", "OKEGui", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
@@ -166,7 +180,8 @@ namespace OKEGui
             SubWindow subWin = new SubWindow(item);
             subWin.ShowDialog();
 
-            if (!tm.UpdateTask(subWin.GetNewTaskDetail())) {
+            if (!tm.UpdateTask(subWin.GetNewTaskDetail()))
+            {
                 System.Windows.MessageBox.Show("任务更新失败！", "OKEGui", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
@@ -186,17 +201,20 @@ namespace OKEGui
         private void BtnDelete_Click(object sender, RoutedEventArgs e)
         {
             object o = listView1.SelectedItem;
-            if (o == null) {
+            if (o == null)
+            {
                 return;
             }
 
             TaskDetail item = o as TaskDetail;
-            if (item.IsRunning) {
+            if (item.IsRunning)
+            {
                 System.Windows.MessageBox.Show("无法删除该任务！", "OKEGui", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            if (!tm.DeleteTask(item)) {
+            if (!tm.DeleteTask(item))
+            {
                 System.Windows.MessageBox.Show("任务删除失败！", "OKEGui", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
@@ -205,7 +223,8 @@ namespace OKEGui
 
         private void BtnEmpty_Click(object sender, RoutedEventArgs e)
         {
-            if (!tm.isCanStart) {
+            if (!tm.isCanStart)
+            {
                 tm.taskStatus.Clear();
             }
         }
@@ -220,23 +239,28 @@ namespace OKEGui
 
         private void BtnDeleteWorker_Click(object sender, RoutedEventArgs e)
         {
-            if (wm.DeleteWorker("工作单元-" + WorkerCount.ToString())) {
+            if (wm.DeleteWorker("工作单元-" + WorkerCount.ToString()))
+            {
                 WorkerCount--;
                 this.WorkerNumber.Text = "工作单元：" + WorkerCount.ToString();
-            } else {
+            }
+            else
+            {
                 System.Windows.MessageBox.Show("工作单元删除失败！", "OKEGui", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private void comboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            if (wm == null) {
+            if (wm == null)
+            {
                 return;
             }
 
             string cmd = (comboBox.SelectedItem as ComboBoxItem).Content as string;
 
-            switch (cmd) {
+            switch (cmd)
+            {
                 case "关机":
                     wm.AfterFinish = () => System.Diagnostics.Process.Start("cmd.exe", "/c shutdown -s -t 300");
                     break;

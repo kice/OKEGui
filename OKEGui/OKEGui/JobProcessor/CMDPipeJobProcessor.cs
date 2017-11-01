@@ -11,11 +11,11 @@ namespace OKEGui
 
         private CommandlineJobProcessor outProcessor, inProcessor;
 
-        Process outProc = new Process();
-        Process inProc = new Process();
+        private Process outProc = new Process();
+        private Process inProc = new Process();
 
-        ManualResetEvent mre = new ManualResetEvent(false);
-        ManualResetEvent pauseMre = new ManualResetEvent(true);
+        private ManualResetEvent mre = new ManualResetEvent(false);
+        private ManualResetEvent pauseMre = new ManualResetEvent(true);
 
         public static CMDPipeJobProcessor NewCMDPipeJobProcessor(IJobProcessor stdout, IJobProcessor stdin)
         {
@@ -40,31 +40,32 @@ namespace OKEGui
             inProcessor = cliProcessor;
         }
 
-        public void changePriority(ProcessPriority priority)
+        public void ChangePriority(ProcessPriority priority)
         {
-            outProcessor.changePriority(priority);
-            inProcessor.changePriority(priority);
+            outProcessor.ChangePriority(priority);
+            inProcessor.ChangePriority(priority);
         }
 
-        public void pause()
+        public void Pause()
         {
             if (!mre.Reset())
                 throw new Exception("Could not reset mutex. pause failed");
         }
 
-        public void resume()
+        public void Resume()
         {
             if (!mre.Set())
                 throw new Exception("Could not set mutex. pause failed");
         }
 
-        public void setup(Job job, StatusUpdate su)
+        public void Setup(Job job, TaskStatus su)
         {
         }
 
-        public void start()
+        public void Start()
         {
-            var startInfo = new ProcessStartInfo {
+            var startInfo = new ProcessStartInfo
+            {
                 FileName = outProcessor.Executable,
                 Arguments = outProcessor.Commandline,
                 UseShellExecute = false,
@@ -76,7 +77,8 @@ namespace OKEGui
             };
             outProc.StartInfo = startInfo;
 
-            startInfo = new ProcessStartInfo {
+            startInfo = new ProcessStartInfo
+            {
                 FileName = inProcessor.Executable,
                 Arguments = inProcessor.Commandline,
                 UseShellExecute = false,
@@ -88,51 +90,63 @@ namespace OKEGui
             };
             inProc.StartInfo = startInfo;
 
-            try {
+            try
+            {
                 outProc.Start();
                 inProc.Start();
 
                 // 转发线程
-                new Thread(new ThreadStart(() => {
-                    try {
-                        while (!mre.WaitOne(0)) {
+                new Thread(new ThreadStart(() =>
+                {
+                    try
+                    {
+                        while (!mre.WaitOne(0))
+                        {
                             var sr = outProc.StandardOutput.BaseStream;
                             var sw = inProc.StandardInput.BaseStream;
 
                             Thread.Sleep(2000);
 
-                            while (sr.CanRead && !outProc.HasExited) {
+                            while (sr.CanRead && !outProc.HasExited)
+                            {
                                 sr.CopyTo(sw);
                                 sw.Flush();
                             }
                             sw.Close();
                             return;
                         }
-                    } catch (Exception e) {
+                    }
+                    catch (Exception e)
+                    {
                         throw e;
                     }
                 })).Start();
 
                 // 等待stdin端完成
-                new Thread(new ThreadStart(() => {
-                    inProcessor.waitForFinish();
+                new Thread(new ThreadStart(() =>
+                {
+                    inProcessor.WaitForFinish();
                     SetFinish();
                 })).Start();
 
                 new Thread(new ThreadStart(readStdErr)).Start();
                 new Thread(new ThreadStart(readStdOut)).Start();
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 throw e;
             }
         }
 
-        public void stop()
+        public void Stop()
         {
-            if (!outProc.HasExited) {
+            if (!outProc.HasExited)
+            {
                 outProc.Kill();
             }
 
-            if (!inProc.HasExited) {
+            if (!inProc.HasExited)
+            {
                 inProc.Kill();
             }
 
@@ -140,7 +154,7 @@ namespace OKEGui
             SetFinish();
         }
 
-        public void waitForFinish()
+        public void WaitForFinish()
         {
             mre.WaitOne();
         }
@@ -153,12 +167,17 @@ namespace OKEGui
         private void readStream(StreamReader sr, StreamType str)
         {
             string line;
-            if (inProc != null) {
-                try {
-                    while ((line = sr.ReadLine()) != null) {
+            if (inProc != null)
+            {
+                try
+                {
+                    while ((line = sr.ReadLine()) != null)
+                    {
                         inProcessor.ProcessLine(line, str);
                     }
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     throw e;
                 }
             }
@@ -167,9 +186,12 @@ namespace OKEGui
         private void readStdOut()
         {
             StreamReader sr = null;
-            try {
+            try
+            {
                 sr = inProc.StandardOutput;
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 // log.LogValue("Exception getting IO reader for stdout", e, ImageType.Error);
                 return;
             }
@@ -179,9 +201,12 @@ namespace OKEGui
         private void readStdErr()
         {
             StreamReader sr = null;
-            try {
+            try
+            {
                 sr = inProc.StandardError;
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 // log.LogValue("Exception getting IO reader for stderr", e, ImageType.Error);
                 return;
             }

@@ -198,7 +198,8 @@ namespace OKEGui
 
             while (isRunning)
             {
-                TaskDetail task = args.taskManager.GetNextTask();
+                TaskDetails task = args.taskManager.GetNextTask();
+                TaskStatus su = task.Status;
 
                 // 检查是否已经完成全部任务
                 if (task == null)
@@ -220,8 +221,8 @@ namespace OKEGui
                     return;
                 }
 
+                su.IsEnabled = false;
                 task.WorkerName = args.Name;
-                task.IsEnabled = false;
                 task.IsRunning = true;
 
                 // 新建工作
@@ -231,24 +232,24 @@ namespace OKEGui
                 {
                     throw new Exception("Eac3to 不存在");
                 }
-                MediaFile srcTracks = new EACDemuxer(eacInfo.FullName, task.InputFile).Extract(
+                MediaFile extAudioTracks = new EACDemuxer(eacInfo.FullName, task.MediaInFile.Path).Extract(
                     (double progress, EACProgressType type) =>
                     {
                         switch (type)
                         {
                             case EACProgressType.Analyze:
-                                task.CurrentStatus = "轨道分析中";
-                                task.ProgressValue = progress;
+                                su.Status = "轨道分析中";
+                                su.Progress = progress;
                                 break;
 
                             case EACProgressType.Process:
-                                task.CurrentStatus = "抽取音轨中";
-                                task.ProgressValue = progress;
+                                su.Status = "抽取音轨中";
+                                su.Progress = progress;
                                 break;
 
                             case EACProgressType.Completed:
-                                task.CurrentStatus = "音轨抽取完毕";
-                                task.ProgressValue = progress;
+                                su.Status = "音轨抽取完毕";
+                                su.Progress = progress;
                                 break;
 
                             default:
@@ -256,48 +257,34 @@ namespace OKEGui
                         }
                     });
 
+                var srcAudioTracks = task.MediaInFile.AudioTracks;
+
                 // 新建音频处理工作
-                if (srcTracks.AudioTracks.Count != task.AudioTracks.Count)
+                if (extAudioTracks.AudioTracks.Count != srcAudioTracks.Count)
                 {
                     new System.Threading.Tasks.Task(() =>
-                        System.Windows.MessageBox.Show($"当前的视频含有轨道数{srcTracks.AudioTracks.Count}，与json中指定的数量{task.AudioTracks.Count}不符合。该文件{task.InputFile}将跳过处理")).Start();
+                        System.Windows.MessageBox.Show($"当前的视频含有轨道数{extAudioTracks.AudioTracks.Count}，与json中指定的数量{srcAudioTracks.Count}不符合。该文件{task.MediaInFile.Path}将跳过处理")).Start();
                     return;
                 }
 
-                for (int id = 0; id < srcTracks.AudioTracks.Count; id++)
+                for (int id = 0; id < extAudioTracks.AudioTracks.Count; id++)
                 {
-                    if (task.AudioTracks[id].SkipMuxing)
+                    if (srcAudioTracks[id].StreamInfo.SkipMuxing)
                     {
                         continue;
                     }
 
                     // 只处理flac文件
-                    if (srcTracks.AudioTracks[id].file.GetExtension() != ".flac")
+                    if (extAudioTracks.AudioTracks[id].File.GetExtension() != ".flac")
                     {
                         continue;
                     }
-                    AudioJob audioJob = new AudioJob(task.AudioTracks[id].OutputCodec);
-                    audioJob.SetUpdate(task);
-
-                    audioJob.Input = srcTracks.AudioTracks[id].file.GetFullPath();
+                    AudioJob audioJob = new AudioJob(srcAudioTracks[id].StreamInfo.OutputCodec);
+                    audioJob.Input.Path = extAudioTracks.AudioTracks[id].File.GetFullPath();
 
                     task.JobQueue.Enqueue(audioJob);
                 }
 
-                // 新建视频处理工作
-                if (task.VideoFormat == "HEVC")
-                {
-                    VideoJob videoJob = new VideoJob(task.VideoFormat);
-                    videoJob.SetUpdate(task);
-
-                    videoJob.Input = task.InputScript;
-                    videoJob.Output = new FileInfo(task.InputFile).FullName + ".hevc";
-                    videoJob.EncoderPath = task.EncoderPath;
-                    videoJob.EncodeParam = task.EncoderParam;
-                    videoJob.Fps = task.Fps;
-
-                    task.JobQueue.Enqueue(videoJob);
-                }
                 while (task.JobQueue.Count != 0)
                 {
                     Job job = task.JobQueue.Dequeue();
@@ -313,21 +300,21 @@ namespace OKEGui
                         }
                         else if (audioJob.CodecString == "AAC")
                         {
-                            task.CurrentStatus = "音频转码中";
-                            task.IsUnKnowProgress = true;
+                            su.Status = "音频转码中";
+                            su.IsUnKnowProgress = true;
                             AudioJob aDecode = new AudioJob("WAV");
                             aDecode.Input = audioJob.Input;
-                            aDecode.Output = "-";
+                            aDecode.Output.Path = "-";
                             FLACDecoder flac = new FLACDecoder(".\\tools\\flac\\flac.exe", aDecode);
 
                             AudioJob aEncode = new AudioJob("AAC");
-                            aEncode.Input = "-";
-                            aEncode.Output = Path.ChangeExtension(audioJob.Input, ".aac");
+                            aEncode.Input.Path = "-";
+                            aEncode.Output.Path = Path.ChangeExtension(audioJob.Input.Path, ".aac");
                             QAACEncoder qaac = new QAACEncoder(".\\tools\\qaac\\qaac.exe", aEncode, audioJob.Bitrate > 0 ? audioJob.Bitrate : Utils.Constants.QAACBitrate);
 
                             CMDPipeJobProcessor cmdpipe = CMDPipeJobProcessor.NewCMDPipeJobProcessor(flac, qaac);
-                            cmdpipe.start();
-                            cmdpipe.waitForFinish();
+                            cmdpipe.Start();
+                            cmdpipe.WaitForFinish();
 
                             audioJob.Output = aEncode.Output;
                         }
@@ -337,15 +324,15 @@ namespace OKEGui
                             audioJob.Output = audioJob.Input;
                         }
 
-                        var audioFileInfo = new FileInfo(audioJob.Output);
+                        var audioFileInfo = new FileInfo(audioJob.Output.Path);
                         if (audioFileInfo.Length < 1024)
                         {
                             // 无效音轨
-                            File.Move(audioJob.Output, Path.ChangeExtension(audioJob.Output, ".bak") + audioFileInfo.Extension);
+                            File.Move(audioJob.Output.Path, Path.ChangeExtension(audioJob.Output.Path, ".bak") + audioFileInfo.Extension);
                             continue;
                         }
 
-                        task.MediaOutFile.AddTrack(AudioTrack.NewTrack(new OKEFile(job.Output)));
+                        task.MediaOutFile.AddTrack(AudioTrack.NewTrack(new OKEFile(job.Output.Path)));
                     }
                     else if (job is VideoJob)
                     {
@@ -353,14 +340,14 @@ namespace OKEGui
                         {
                             try
                             {
-                                task.CurrentStatus = "获取信息中";
-                                task.IsUnKnowProgress = true;
-                                IJobProcessor processor = x265Encoder.init(job, task.EncoderParam);
+                                su.Status = "获取信息中";
+                                su.IsUnKnowProgress = true;
+                                IJobProcessor processor = x265Encoder.init(job, (job as VideoJob).EncodeParam);
 
-                                task.CurrentStatus = "压制中";
-                                task.ProgressValue = 0.0;
-                                processor.start();
-                                processor.waitForFinish();
+                                su.Status = "压制中";
+                                su.Progress = 0.0;
+                                processor.Start();
+                                processor.WaitForFinish();
                             }
                             catch (Exception ex)
                             {
@@ -368,7 +355,7 @@ namespace OKEGui
                             }
                         }
 
-                        task.MediaOutFile.AddTrack(VideoTrack.NewTrack(new OKEFile(job.Output), (job as VideoJob).Fps));
+                        task.MediaOutFile.AddTrack(VideoTrack.NewTrack(new OKEFile(job.Output.Path), (job as VideoJob).Fps));
                     }
                     else
                     {
@@ -377,7 +364,7 @@ namespace OKEGui
                 }
 
                 // 添加章节文件
-                FileInfo txtChapter = new FileInfo(Path.ChangeExtension(task.InputFile, ".txt"));
+                FileInfo txtChapter = new FileInfo(Path.ChangeExtension(task.MediaInFile.Path, ".txt"));
                 if (txtChapter.Exists)
                 {
                     task.MediaOutFile.AddTrack(ChapterTrack.NewTrack(new OKEFile(txtChapter)));
@@ -386,7 +373,7 @@ namespace OKEGui
                 // 封装
                 if (task.ContainerFormat != "")
                 {
-                    task.CurrentStatus = "封装中";
+                    su.Status = "封装中";
                     FileInfo mkvInfo = new FileInfo(".\\tools\\mkvtoolnix\\mkvmerge.exe");
                     if (!mkvInfo.Exists)
                     {
@@ -400,13 +387,13 @@ namespace OKEGui
                     }
 
                     AutoMuxer muxer = new AutoMuxer(mkvInfo.FullName, lsmash.FullName);
-                    muxer.ProgressChanged += progress => task.ProgressValue = progress;
+                    muxer.ProgressChanged += progress => su.Progress = progress;
 
-                    muxer.StartMuxing(Path.GetDirectoryName(task.InputFile) + "\\" + task.OutputFile, task.MediaOutFile);
+                    muxer.StartMuxing(Path.GetDirectoryName(task.MediaInFile.Path) + "\\" + task.MediaOutFile.Path, task.MediaOutFile);
                 }
 
-                task.CurrentStatus = "完成";
-                task.ProgressValue = 100;
+                su.Status = "完成";
+                su.Progress = 100;
             }
         }
 

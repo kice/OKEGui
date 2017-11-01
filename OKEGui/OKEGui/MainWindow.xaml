@@ -44,7 +44,7 @@
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="状态" Width="80" DisplayMemberBinding="{Binding Path=CurrentStatus}">
+                    <GridViewColumn Header="状态" Width="80" DisplayMemberBinding="{Binding Path=Status}">
                     </GridViewColumn>
                     <GridViewColumn Header="进度" Width="115" x:Name="TaskProgress">
                         <GridViewColumn.CellTemplate>
